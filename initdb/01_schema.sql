@@ -8,7 +8,9 @@ CREATE TABLE clients (
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     adresse VARCHAR(150),
-    telephone VARCHAR(20)
+    telephone VARCHAR(20),
+    is_verified BOOLEAN DEFAULT FALSE,
+    verification_token VARCHAR(255)
 );
 
 CREATE TABLE produits (

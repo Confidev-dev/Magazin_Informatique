@@ -1,8 +1,10 @@
 import os
 import re
 import bcrypt
-from flask import Flask, render_template, request, redirect
+import uuid
+from flask import Flask, render_template, request, redirect, url_for
 from mysql.connector import pooling
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 
@@ -13,6 +15,17 @@ db_config = {
     "password": "ton_mot_de_passe",
     "database": "magasin_informatique"
 }
+
+# Config Mail
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 465))
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'False') == 'True'
+app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'True') == 'True'
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('MAIL_USERNAME'))
+
+mail = Mail(app)
 
 db_pool = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, **db_config)
 
@@ -37,13 +50,17 @@ def login():
 
         conn = get_db()
         cursor = conn.cursor(dictionary=True, buffered=True)
-        cursor.execute("SELECT id, password FROM clients WHERE email=%s", (email,))
+        cursor.execute("SELECT id, password, is_verified FROM clients WHERE email=%s", (email,))
         client = cursor.fetchone()
         cursor.close()
         conn.close()
 
-        if client and bcrypt.checkpw(password.encode('utf-8'), client['password'].encode('utf-8')):
-            return redirect(f"/client/{client['id']}")
+        if client:
+            if not client['is_verified']:
+                return "Veuillez vérifier votre email avant de vous connecter."
+            
+            if bcrypt.checkpw(password.encode('utf-8'), client['password'].encode('utf-8')):
+                return redirect(f"/client/{client['id']}")
             
         return "Erreur login : identifiants incorrects"
         
@@ -135,6 +152,7 @@ def signup():
         # -------------------------------
 
         hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        token = str(uuid.uuid4())
 
         conn = get_db()
         cursor = conn.cursor(buffered=True)
@@ -144,12 +162,18 @@ def signup():
             if cursor.fetchone():
                 return "Cet email est déjà utilisé."
 
-            sql = """INSERT INTO clients (nom, prenom, email, adresse, telephone, password) 
-                     VALUES (%s, %s, %s, %s, %s, %s)"""
-            cursor.execute(sql, (nom, prenom, email, adresse, telephone, hashed_pw.decode('utf-8')))
+            sql = """INSERT INTO clients (nom, prenom, email, adresse, telephone, password, verification_token) 
+                     VALUES (%s, %s, %s, %s, %s, %s, %s)"""
+            cursor.execute(sql, (nom, prenom, email, adresse, telephone, hashed_pw.decode('utf-8'), token))
             
+            # Envoi du mail de vérification
+            msg = Message("Vérification de votre compte", recipients=[email])
+            link = url_for('verify', token=token, _external=True)
+            msg.body = f"Bonjour {prenom}, veuillez cliquer sur ce lien pour vérifier votre compte : {link}"
+            mail.send(msg)
+
             conn.commit()
-            return redirect("/login")
+            return "Un email de vérification a été envoyé. Veuillez vérifier votre boîte de réception."
             
         except Exception as e:
             return f"Erreur critique : {e}"
@@ -158,6 +182,25 @@ def signup():
             conn.close()
             
     return render_template("signup.html")
+
+@app.route("/verify/<token>")
+def verify(token):
+    conn = get_db()
+    cursor = conn.cursor(buffered=True)
+    try:
+        cursor.execute("SELECT id FROM clients WHERE verification_token = %s", (token,))
+        client = cursor.fetchone()
+        if client:
+            cursor.execute("UPDATE clients SET is_verified = TRUE, verification_token = NULL WHERE id = %s", (client[0],))
+            conn.commit()
+            return "Votre compte a été vérifié avec succès ! Vous pouvez maintenant vous <a href='/login'>connecter</a>."
+        else:
+            return "Lien de vérification invalide ou expiré."
+    except Exception as e:
+        return f"Erreur : {e}"
+    finally:
+        cursor.close()
+        conn.close()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
