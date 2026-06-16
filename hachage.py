@@ -1,45 +1,50 @@
 import hashlib
 import mysql.connector
 
-# 1. Connexion à la base de données
+# Connexion à ta base de données
 db = mysql.connector.connect(
     host="127.0.0.1",
     port=3306,
     user="root",
     password="",
-    database="magasin_informatique"
+    database="magasin_informatique",
+    ssl_disabled=True
 )
 
 cursor = db.cursor(dictionary=True)
 
-print("--- DÉBUT DE LA SÉCURISATION ---")
+# On désactive la sécurité Safe Update pour pouvoir modifier les lignes
+cursor.execute("SET SQL_SAFE_UPDATES = 0;")
 
-# 2. Récupérer tous les clients actuels
-cursor.execute("SELECT id, password FROM clients")
+# On récupère tous les clients de la base
+cursor.execute("SELECT id, email, password FROM clients")
 clients = cursor.fetchall()
+
+print("--- DEBUT DU HACHAGE ---")
 
 for client in clients:
     id_client = client['id']
-    mdp_clair = client['password']
+    email_client = client['email']
+    mdp_clair = client['password'].strip()
     
-    # Sécurité : Si le mot de passe est déjà haché (64 caractères pour SHA-256), on n'y touche pas
-    if len(mdp_clair) == 64 and all(c in '0123456789abcdefABCDEF' for c in mdp_clair):
-        print(f"[Info] Le client ID {id_client} a déjà un mot de passe sécurisé.")
+    # Si le mot de passe fait déjà 64 caractères, il est déjà haché
+    if len(mdp_clair) == 64:
+        print(f"[Info] {email_client} est déjà haché.")
         continue
-
-    # 3. Hachage du mot de passe en SHA-256
+        
+    # Calcul du hachage SHA-256 exact pour "1234"
     mdp_hache = hashlib.sha256(mdp_clair.encode('utf-8')).hexdigest()
     
-    # 4. Mise à jour dans la base de données
+    # On écrase le texte en clair par la version hachée dans MySQL
     cursor.execute(
         "UPDATE clients SET password = %s WHERE id = %s",
         (mdp_hache, id_client)
     )
-    print(f"[Succès] Client ID {id_client} : '{mdp_clair}' transformé en -> {mdp_hache[:10]}...")
+    print(f"[Succès] {email_client} haché -> {mdp_hache[:10]}...")
 
-# 5. Sauvegarder les changements
+# On valide les changements définitivement
 db.commit()
+
 cursor.close()
 db.close()
-
-print("--- TOUS LES MOTS DE PASSE ONT ÉTÉ HACHÉS AVEC SUCCÈS ! ---")
+print("--- FIN DU HACHAGE : TOUT EST OK ---")
