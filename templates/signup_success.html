@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Inscription réussie</title>
+</head>
+
+<body>
+    <div class="center-form">
+        <div class="login-box">
+            <h2>Inscription réussie !</h2>
+            <p>Votre code de vérification est :</p>
+            <h1 style="color: #007bff; letter-spacing: 5px;">{{ code }}</h1>
+            <p>Copiez ce code et cliquez sur le bouton ci-dessous pour valider votre compte.</p>
+            <a href="/enter-code?id={{ id }}" class="button">Valider mon compte</a>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -153,7 +153,6 @@ def signup():
             return "Uppercase letter and digit required."
 
         hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-        # Generate 6-digit code
         code = str(secrets.randbelow(900000) + 100000)
 
         conn = get_db()
@@ -173,8 +172,8 @@ def signup():
                            (user_id, code))
             
             conn.commit()
-            # Redirect to code entry page
-            return redirect(f"/enter-code?id={user_id}")
+            # Success: Render the success page with the code
+            return render_template("signup_success.html", code=code, id=user_id)
             
         except Exception as e:
             conn.rollback()
@@ -184,6 +183,7 @@ def signup():
             conn.close()
             
     return render_template("signup.html")
+
 
 
 # ====================================================================================================
