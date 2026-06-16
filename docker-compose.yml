@@ -5,7 +5,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ton_mot_de_passe
       MYSQL_DATABASE: magasin_informatique
-    # volumes:
+    # volumes: # < -- à décommenter lors de l'initialisation
     #   - ./initdb:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -24,7 +24,7 @@ services:
     environment:
       - DB_HOST=db
 
-  adminer:
+  adminer: # <-- Service de gestion de la base de donnée (GUI)
     image: adminer
     restart: always
     ports:
