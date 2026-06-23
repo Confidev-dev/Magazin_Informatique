@@ -7,35 +7,36 @@
 </head>
 <body>
     <h2>📦 Votre Panier</h2>
-
     {% if articles %}
         <table border="1" style="width: 100%; border-collapse: collapse;">
             <tr>
                 <th style="padding: 10px;">Produit</th>
                 <th style="padding: 10px;">Quantité</th>
+                <th style="padding: 10px;">Actions</th>
             </tr>
             {% for a in articles %}
             <tr>
                 <td style="padding: 10px;">{{ a.nom }}</td>
-                <td style="padding: 10px;">{{ a.quantite }}</td>
+                <td style="padding: 10px;">
+                    <form action="{{ url_for('modifier_panier', id_panier=a.id) }}" method="POST" style="display:inline;">
+                        <input type="number" name="quantite" value="{{ a.quantite }}" min="1" style="width:50px;">
+                        <button type="submit">Modifier</button>
+                    </form>
+                </td>
+                <td style="padding: 10px;">
+                    <form action="{{ url_for('supprimer_panier', id_panier=a.id) }}" method="POST">
+                        <button type="submit" style="color: red;">Supprimer</button>
+                    </form>
+                </td>
             </tr>
             {% endfor %}
         </table>
-
-        <div style="margin-top: 20px;">
-            <form action="{{ url_for('valider_commande') }}" method="POST">
-                <button type="submit" style="background-color: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">
-                    ✅ Valider la commande
-                </button>
-            </form>
-        </div>
+        <form action="{{ url_for('valider_commande') }}" method="POST" style="margin-top: 20px;">
+            <button type="submit" style="background:#28a745; color:white; padding:10px;">✅ Valider la commande</button>
+        </form>
     {% else %}
         <p>Votre panier est vide.</p>
     {% endif %}
-
-    <p style="margin-top: 20px;">
-        <a href="{{ url_for('commander', id_client=session['user_id']) }}" style="margin-right: 15px;">🛒 Continuer mes achats</a>
-        <a href="{{ url_for('client', id_client=session['user_id']) }}">⬅️ Retour au tableau de bord</a>
-    </p>
+    <p><a href="{{ url_for('commander', id_client=session['user_id']) }}">🛒 Continuer mes achats</a></p>
 </body>
 </html>

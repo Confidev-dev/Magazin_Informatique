@@ -110,7 +110,7 @@ def ajouter_panier():
     cursor.execute("INSERT INTO panier (id_client, id_produit, quantite) VALUES (%s, %s, %s)", (id_client, id_produit, quantite))
     db.commit()
     cursor.close()
-    flash("Produit ajouté avec succès au panier !")
+    flash("Produit ajouté au panier !")
     return redirect(url_for('commander', id_client=id_client))
 
 @app.route("/panier")
@@ -118,7 +118,7 @@ def ajouter_panier():
 def afficher_panier():
     cursor = db.cursor(dictionary=True)
     cursor.execute("""
-        SELECT produits.nom, panier.quantite 
+        SELECT panier.id, produits.nom, panier.quantite 
         FROM panier 
         JOIN produits ON panier.id_produit = produits.id 
         WHERE panier.id_client = %s
@@ -126,6 +126,29 @@ def afficher_panier():
     articles = cursor.fetchall()
     cursor.close()
     return render_template("panier.html", articles=articles)
+
+# SUPPRESSION / MODIFICATION
+@app.route('/supprimer_panier/<int:id_panier>', methods=['POST'])
+@login_required
+def supprimer_panier(id_panier):
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM panier WHERE id = %s AND id_client = %s", (id_panier, session['user_id']))
+    db.commit()
+    cursor.close()
+    flash("Produit supprimé du panier.")
+    return redirect(url_for('afficher_panier'))
+
+@app.route('/modifier_panier/<int:id_panier>', methods=['POST'])
+@login_required
+def modifier_panier(id_panier):
+    nouvelle_quantite = int(request.form['quantite'])
+    if nouvelle_quantite > 0:
+        cursor = db.cursor()
+        cursor.execute("UPDATE panier SET quantite = %s WHERE id = %s AND id_client = %s", 
+                       (nouvelle_quantite, id_panier, session['user_id']))
+        db.commit()
+        cursor.close()
+    return redirect(url_for('afficher_panier'))
 
 # LOGIN
 @app.route("/login", methods=["GET", "POST"])
@@ -172,7 +195,7 @@ def client(id_client):
     cursor.close()
     return render_template("client.html", produits=produits, id_client=id_client)
 
-# COMMANDER (Catalogue)
+# COMMANDER
 @app.route('/client/<int:id_client>/commander', methods=['GET'])
 @login_required
 def commander(id_client):
@@ -188,14 +211,8 @@ def commander(id_client):
 @app.route('/valider_commande', methods=['POST'])
 @login_required
 def valider_commande():
-    # Logique pour transformer le panier en commande réelle
     id_client = session['user_id']
-    cursor = db.cursor(dictionary=True, buffered=True)
-    # 1. Récupérer le panier
-    cursor.execute("SELECT * FROM panier WHERE id_client = %s", (id_client,))
-    articles = cursor.fetchall()
-    # 2. Insérer dans commandes / details_commandes
-    # (Logique de transaction ici)
+    cursor = db.cursor()
     cursor.execute("DELETE FROM panier WHERE id_client = %s", (id_client,))
     db.commit()
     cursor.close()
