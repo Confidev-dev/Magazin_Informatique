@@ -1,0 +1,4 @@
+--- Rapport du 2026-06-23 09:36:56 ---
+Flask (Port 5000) : INACTIF
+MySQL (Port 3306) : ACTIF
+

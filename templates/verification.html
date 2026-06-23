@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .code-box { background: #e0e0e0; padding: 15px; border-radius: 8px; margin: 15px 0; font-weight: bold; font-size: 20px; text-align: center; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<div class="center-form">
+    <div class="login-box">
+        <h2>Vérification</h2>
+        <p>Cliquez pour voir votre code de simulation :</p>
+        
+        <button type="button" onclick="document.getElementById('code-display').classList.remove('hidden')">
+            Recevoir le code
+        </button>
+        
+        <div id="code-display" class="code-box hidden">
+            {{ session.get('code_attendu') }}
+        </div>
+
+        <form method="POST">
+            <input type="text" name="code" placeholder="Entrez le code ici" required>
+            <button type="submit">Valider</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>
