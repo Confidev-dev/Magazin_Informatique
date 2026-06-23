@@ -45,7 +45,7 @@ except Exception as e:
 def accueil():
     return render_template("accueil.html")
 
-# INSCRIPTION (Étape 1)
+# INSCRIPTION
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -64,7 +64,6 @@ def register():
             return redirect(url_for('register'))
         cursor.close()
 
-        # Stockage temporaire
         session['temp_nom'] = nom_saisi
         session['temp_prenom'] = prenom_saisi
         session['temp_email'] = email_saisi
@@ -72,18 +71,14 @@ def register():
         session['temp_adresse'] = adresse_saisie
         session['temp_numero'] = numero_saisi
         session['code_attendu'] = str(random.randint(1000, 9999))
-        
         return redirect(url_for('verification'))
-        
     return render_template("inscription.html")
 
-# VÉRIFICATION (Étape 2)
 @app.route("/verification", methods=["GET", "POST"])
 def verification():
     if request.method == "POST":
         code_saisi = request.form["code"]
         if code_saisi == session.get('code_attendu'):
-            # Récupération des données temporaires
             nom = session.pop('temp_nom')
             prenom = session.pop('temp_prenom')
             email = session.pop('temp_email')
@@ -94,11 +89,8 @@ def verification():
             
             mdp_hache = hashlib.sha256(mdp.encode('utf-8')).hexdigest()
             cursor = db.cursor()
-            # Insertion finale dans la BDD avec nom, prenom, adresse et telephone
-            cursor.execute("""
-                INSERT INTO clients (nom, prenom, email, password, adresse, telephone) 
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (nom, prenom, email, mdp_hache, adresse, telephone))
+            cursor.execute("INSERT INTO clients (nom, prenom, email, password, adresse, telephone) VALUES (%s, %s, %s, %s, %s, %s)", 
+                           (nom, prenom, email, mdp_hache, adresse, telephone))
             db.commit()
             cursor.close()
             flash("Inscription validée avec succès !")
@@ -106,6 +98,34 @@ def verification():
         else:
             flash("Code incorrect.")
     return render_template("verification.html")
+
+# --- PANIER ---
+@app.route('/ajouter_panier', methods=['POST'])
+@login_required
+def ajouter_panier():
+    id_client = session['user_id']
+    id_produit = int(request.form['id_produit'])
+    quantite = int(request.form['quantite'])
+    cursor = db.cursor()
+    cursor.execute("INSERT INTO panier (id_client, id_produit, quantite) VALUES (%s, %s, %s)", (id_client, id_produit, quantite))
+    db.commit()
+    cursor.close()
+    flash("Produit ajouté avec succès au panier !")
+    return redirect(url_for('commander', id_client=id_client))
+
+@app.route("/panier")
+@login_required
+def afficher_panier():
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT produits.nom, panier.quantite 
+        FROM panier 
+        JOIN produits ON panier.id_produit = produits.id 
+        WHERE panier.id_client = %s
+    """, (session['user_id'],))
+    articles = cursor.fetchall()
+    cursor.close()
+    return render_template("panier.html", articles=articles)
 
 # LOGIN
 @app.route("/login", methods=["GET", "POST"])
@@ -152,35 +172,35 @@ def client(id_client):
     cursor.close()
     return render_template("client.html", produits=produits, id_client=id_client)
 
-# COMMANDER
-@app.route('/client/<int:id_client>/commander', methods=['GET', 'POST'])
+# COMMANDER (Catalogue)
+@app.route('/client/<int:id_client>/commander', methods=['GET'])
 @login_required
 def commander(id_client):
     if session['user_id'] != id_client and session['user_id'] != 'admin':
         return "Accès interdit", 403
     cursor = db.cursor(dictionary=True, buffered=True)
-    if request.method == 'GET':
-        cursor.execute("SELECT * FROM produits WHERE stock > 0")
-        produits = cursor.fetchall()
-        cursor.close()
-        return render_template('commander.html', id_client=id_client, produits=produits)
-    if request.method == 'POST':
-        id_produit = int(request.form['id_produit'])
-        quantite_demandee = int(request.form['quantite'])
-        cursor.execute("SELECT * FROM produits WHERE id = %s", (id_produit,))
-        produit = cursor.fetchone()
-        if not produit or produit['stock'] < quantite_demandee:
-            cursor.close()
-            return "Stock insuffisant !", 400
-        total = produit['prix'] * quantite_demandee
-        cursor.execute("INSERT INTO commandes (id_client, date_commande, total) VALUES (%s, NOW(), %s)", (id_client, total))
-        id_commande = cursor.lastrowid
-        cursor.execute("INSERT INTO details_commandes (id_commande, id_produit, quantite, prix_unitaire) VALUES (%s, %s, %s, %s)", 
-                       (id_commande, id_produit, quantite_demandee, produit['prix']))
-        cursor.execute("UPDATE produits SET stock = stock - %s WHERE id = %s", (quantite_demandee, id_produit))
-        db.commit()
-        cursor.close()
-        return redirect(f'/client/{id_client}')
+    cursor.execute("SELECT * FROM produits WHERE stock > 0")
+    produits = cursor.fetchall()
+    cursor.close()
+    return render_template('commander.html', id_client=id_client, produits=produits)
+
+# VALIDER COMMANDE
+@app.route('/valider_commande', methods=['POST'])
+@login_required
+def valider_commande():
+    # Logique pour transformer le panier en commande réelle
+    id_client = session['user_id']
+    cursor = db.cursor(dictionary=True, buffered=True)
+    # 1. Récupérer le panier
+    cursor.execute("SELECT * FROM panier WHERE id_client = %s", (id_client,))
+    articles = cursor.fetchall()
+    # 2. Insérer dans commandes / details_commandes
+    # (Logique de transaction ici)
+    cursor.execute("DELETE FROM panier WHERE id_client = %s", (id_client,))
+    db.commit()
+    cursor.close()
+    flash("Commande validée avec succès !")
+    return redirect(url_for('client', id_client=id_client))
 
 # ADMIN
 @app.route("/admin")

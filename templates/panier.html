@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Mon Panier</title>
+</head>
+<body>
+    <h2>📦 Votre Panier</h2>
+
+    {% if articles %}
+        <table border="1" style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <th style="padding: 10px;">Produit</th>
+                <th style="padding: 10px;">Quantité</th>
+            </tr>
+            {% for a in articles %}
+            <tr>
+                <td style="padding: 10px;">{{ a.nom }}</td>
+                <td style="padding: 10px;">{{ a.quantite }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <div style="margin-top: 20px;">
+            <form action="{{ url_for('valider_commande') }}" method="POST">
+                <button type="submit" style="background-color: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">
+                    ✅ Valider la commande
+                </button>
+            </form>
+        </div>
+    {% else %}
+        <p>Votre panier est vide.</p>
+    {% endif %}
+
+    <p style="margin-top: 20px;">
+        <a href="{{ url_for('commander', id_client=session['user_id']) }}" style="margin-right: 15px;">🛒 Continuer mes achats</a>
+        <a href="{{ url_for('client', id_client=session['user_id']) }}">⬅️ Retour au tableau de bord</a>
+    </p>
+</body>
+</html>

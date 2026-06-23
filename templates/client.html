@@ -1,29 +1,34 @@
 <head>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <h2>Espace Client</h2>
 
-<a href="/">Se déconnecter</a>
+<a href="{{ url_for('logout') }}">Se déconnecter</a>
 
 <p style="margin-top: 20px; margin-bottom: 20px;">
     <a href="/client/{{ id_client }}/commander" style="display: inline-block; background-color: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; font-family: sans-serif;">
         🛒 Passer une commande
     </a>
+    
+    <a href="{{ url_for('afficher_panier') }}" style="display: inline-block; background-color: #28a745; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; font-family: sans-serif; margin-left: 10px;">
+        📦 Voir mon panier
+    </a>
 </p>
+
 <h3>Mes produits achetés</h3>
 
 <table border="1">
-<tr>
-    <th>Produit</th>
-    <th>Prix</th>
-    <th>Quantité</th>
-</tr>
+    <tr>
+        <th>Produit</th>
+        <th>Prix</th>
+        <th>Quantité</th>
+    </tr>
 
-{% for p in produits %}
-<tr>
-    <td>{{ p.nom }}</td>
-    <td>{{ p.prix }}</td>
-    <td>{{ p.quantite }}</td>
-</tr>
-{% endfor %}
+    {% for p in produits %}
+    <tr>
+        <td>{{ p.nom }}</td>
+        <td>{{ p.prix }}</td>
+        <td>{{ p.quantite }}</td>
+    </tr>
+    {% endfor %}
 </table>
